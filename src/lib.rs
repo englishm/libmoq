@@ -18,6 +18,7 @@ pub extern "C" fn moq_open(
     _url: *const c_char,
     _flags: c_int,
 ) -> c_int {
+    println!("moq_open");
     0
 }
 
