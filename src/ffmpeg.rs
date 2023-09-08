@@ -275,11 +275,11 @@ pub struct AVOptionRanges {
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct AVIODirEntry {
     #[doc = "< Filename"]
-    pub name: *mut libc::c_char,
+    pub name: *mut c_char,
     #[doc = "< Type of the entry"]
-    pub type_: libc::c_int,
+    pub type_: c_int,
     #[doc = "< Set to 1 when name is encoded with UTF-8, 0 otherwise.\nName can be encoded with UTF-8 even though 0 is set."]
-    pub utf8: libc::c_int,
+    pub utf8: c_int,
     #[doc = "< File size in bytes, -1 if unknown."]
     pub size: i64,
     #[doc = "< Time of last modification in microseconds since unix\nepoch, -1 if unknown."]
