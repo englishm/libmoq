@@ -1,30 +1,112 @@
-use std::os::raw::{c_char, c_int, c_void};
+use std::os::raw::{c_char, c_int, c_uchar, c_void};
 
-// Placeholder artisinally hand copied definitions
+// Placeholder artisinally hand transcribed definitions
 // until we create proper bindgen generated ones
 // and/or update an existing ffmpeg-sys/ffmpeg-sys-next crate
 
 /// cbindgen:ignore
 #[repr(C)]
 pub struct URLProtocol {
-    // TODO
+    //const char *name;
     pub name: *const c_char,
+    //int     (*url_open)( URLContext *h, const char *url, int flags);
     pub url_open: *const fn(*mut URLContext, *const c_char, c_int) -> c_int,
+    // int     (*url_open2)(URLContext *h, const char *url, int flags, AVDictionary **options);
+    pub url_open2: *const fn(*mut URLContext) -> c_int,
+    // int     (*url_accept)(URLContext *s, URLContext **c);
+    pub url_accept: *const fn(*mut URLContext, *mut URLContext) -> c_int,
+    // int     (*url_handshake)(URLContext *c);
+    pub url_handshake: *const fn(*mut URLContext) -> c_int,
+    // int     (*url_read)( URLContext *h, unsigned char *buf, int size);
+    pub url_read: *const fn(*mut URLContext, *mut c_uchar, c_int) -> c_int,
+    // int     (*url_write)(URLContext *h, const unsigned char *buf, int size);
+    pub url_write: *const fn(*mut URLContext, *const c_char, c_int) -> c_int,
+    // int64_t (*url_seek)( URLContext *h, int64_t pos, int whence);
+    pub url_seek: *const fn(*mut URLContext, stdint::int64_t, c_int) -> c_int,
+    // int     (*url_close)(URLContext *h);
+    pub url_close: *const fn(*mut URLContext),
+    // int (*url_read_pause)(URLContext *h, int pause);
+    pub url_read_pause: *const fn(*mut URLContext, c_int) -> c_int,
+    // int64_t (*url_read_seek)(URLContext *h, int stream_index,
+    //                          int64_t timestamp, int flags);
+    pub url_read_seek: *const fn(*mut URLContext, c_int, stdint::int64_t, c_int),
+    // int (*url_get_file_handle)(URLContext *h);
+    pub url_get_file_handle: *const fn(*mut URLContext) -> c_int,
+    // int (*url_get_multi_file_handle)(URLContext *h, int **handles,
+    //                                  int *numhandles);
+    pub url_get_multi_file_handle: *const fn(*mut URLContext, c_int, c_int) -> c_int,
+    // int (*url_get_short_seek)(URLContext *h);
+    pub url_get_short_seek: *const fn(*mut URLContext) -> c_int,
+    // int (*url_shutdown)(URLContext *h, int flags);
+    pub url_shutdown: *const fn(*mut URLContext, c_int) -> c_int,
+    // const AVClass *priv_data_class;
+    pub priv_data_class: AVClass,
+    // int priv_data_size;
+    pub priv_data_size: c_int,
+    // int flags;
+    pub flags: c_int,
+    // int (*url_check)(URLContext *h, int mask);
+    pub url_check: *const fn(*mut URLContext, c_int) -> c_int,
+    // int (*url_open_dir)(URLContext *h);
+    pub url_open_dir: *const fn(*mut URLContext) -> c_int,
+    // int (*url_read_dir)(URLContext *h, AVIODirEntry **next);
+    pub url_read_dir: *const fn(*mut URLContext, AVIODirEntry) -> c_int,
+    // int (*url_close_dir)(URLContext *h);
+    pub url_close_dir: *const fn(*mut URLContext) -> c_int,
+    // int (*url_delete)(URLContext *h);
+    pub url_delete: *const fn(*mut URLContext) -> c_int,
+    // int (*url_move)(URLContext *h_src, URLContext *h_dst);
+    pub url_move: *const fn(*mut URLContext, *mut URLContext),
+    // const char *default_whitelist;
+    pub default_whitelist: *const c_char,
 }
 
 /// cbindgen:ignore
 #[repr(C)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct URLContext {
+    // const AVClass *av_class;    /**< information for av_log(). Set by url_open(). */
+    #[doc = "information for av_log(). Set by url_open()."]
     pub av_class: *const AVClass,
+    // const struct URLProtocol *prot;
     pub prot: *const URLProtocol,
+    // void *priv_data;
     pub priv_data: *mut c_void,
+    // char *filename;             /**< specified URL */
+    #[doc = "specified URL"]
     pub filename: *mut c_char,
+    // int flags;
     pub flags: c_int,
+    // int max_packet_size;        /**< if non zero, the stream is packetized with this max packet size */
+    #[doc = "if non zero, the stream is packetized with this max packet size"]
     pub max_packet_size: c_int,
+    // int is_streamed;            /**< true if streamed (no seek possible), default = false */
+    #[doc = "true if streamed (no seek possible), default = false"]
     pub is_streamed: c_int,
+    // int is_connected;
     pub is_connected: c_int,
-    // ...
+    // AVIOInterruptCB interrupt_callback;
+    pub interrupt_callback: AVIOInterruptCB,
+    // int64_t rw_timeout;         /**< maximum time to wait for (network) read/write operation completion, in mcs */
+    #[doc = "maximum time to wait for (network) read/write operation completion, in mcs"]
+    pub rw_timeout: stdint::int64_t,
+    // const char *protocol_whitelist;
+    pub protocol_whitelist: *const c_char,
+    // const char *protocol_blacklist;
+    pub protocol_blacklist: *const c_char,
+    // int min_packet_size;        /**< if non zero, the stream is packetized with this min packet size */
+    #[doc = "if non zero, the stream is packetized with this min packet size"]
+    pub min_packet_size: c_int,
+}
+
+/// cbindgen:ignore
+#[repr(C)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct AVIOInterruptCB {
+    //     int (*callback)(void*);
+    pub callback: *const fn() -> c_int,
+    //     void *opaque;
+    pub opaque: *mut c_void,
 }
 
 // below copied from ffmpeg-sys-next bindgen output as needed to support above
@@ -186,4 +268,30 @@ pub struct AVOptionRanges {
     pub nb_ranges: c_int,
     #[doc = " Number of componentes."]
     pub nb_components: c_int,
+}
+
+#[doc = " Describes single entry of the directory.\n\n Only name and type fields are guaranteed be set.\n Rest of fields are protocol or/and platform dependent and might be unknown."]
+#[repr(C)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct AVIODirEntry {
+    #[doc = "< Filename"]
+    pub name: *mut libc::c_char,
+    #[doc = "< Type of the entry"]
+    pub type_: libc::c_int,
+    #[doc = "< Set to 1 when name is encoded with UTF-8, 0 otherwise.\nName can be encoded with UTF-8 even though 0 is set."]
+    pub utf8: libc::c_int,
+    #[doc = "< File size in bytes, -1 if unknown."]
+    pub size: i64,
+    #[doc = "< Time of last modification in microseconds since unix\nepoch, -1 if unknown."]
+    pub modification_timestamp: i64,
+    #[doc = "< Time of last access in microseconds since unix epoch,\n-1 if unknown."]
+    pub access_timestamp: i64,
+    #[doc = "< Time of last status change in microseconds since unix\nepoch, -1 if unknown."]
+    pub status_change_timestamp: i64,
+    #[doc = "< User ID of owner, -1 if unknown."]
+    pub user_id: i64,
+    #[doc = "< Group ID of owner, -1 if unknown."]
+    pub group_id: i64,
+    #[doc = "< Unix file mode, -1 if unknown."]
+    pub filemode: i64,
 }
