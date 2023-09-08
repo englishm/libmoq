@@ -40,7 +40,7 @@ pub struct URLProtocol {
     // int (*url_shutdown)(URLContext *h, int flags);
     pub url_shutdown: *const fn(*mut URLContext, c_int) -> c_int,
     // const AVClass *priv_data_class;
-    pub priv_data_class: AVClass,
+    pub priv_data_class: Option<AVClass>,
     // int priv_data_size;
     pub priv_data_size: c_int,
     // int flags;
