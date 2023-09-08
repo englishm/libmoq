@@ -6,7 +6,7 @@ use ffmpeg::*;
 
 #[allow(non_upper_case_globals)]
 #[no_mangle]
-pub static mut ff_moq_protocol: URLProtocol = URLProtocol {
+pub static mut ff_libmoq_protocol: URLProtocol = URLProtocol {
     name: "moq\0".as_ptr() as *const c_char,
     url_open: moq_open as *const fn(*mut URLContext, *const c_char, c_int) -> c_int,
 };
