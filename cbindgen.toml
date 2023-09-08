@@ -1,0 +1,2 @@
+language = "C"
+includes = ["libavformat/avformat.h", "libavcodec/packet.h", "libavformat/url.h"]
