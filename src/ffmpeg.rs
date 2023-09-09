@@ -10,35 +10,35 @@ pub struct URLProtocol {
     //const char *name;
     pub name: *const c_char,
     //int     (*url_open)( URLContext *h, const char *url, int flags);
-    pub url_open: *const fn(*mut URLContext, *const c_char, c_int) -> c_int,
+    pub url_open: extern "C" fn(*mut URLContext, *const c_char, c_int) -> c_int,
     // int     (*url_open2)(URLContext *h, const char *url, int flags, AVDictionary **options);
-    pub url_open2: *const fn(*mut URLContext) -> c_int,
+    pub url_open2: Option<extern "C" fn(*mut URLContext) -> c_int>,
     // int     (*url_accept)(URLContext *s, URLContext **c);
-    pub url_accept: *const fn(*mut URLContext, *mut URLContext) -> c_int,
+    pub url_accept: Option<extern "C" fn(*mut URLContext, *mut URLContext) -> c_int>,
     // int     (*url_handshake)(URLContext *c);
-    pub url_handshake: *const fn(*mut URLContext) -> c_int,
+    pub url_handshake: Option<extern "C" fn(*mut URLContext) -> c_int>,
     // int     (*url_read)( URLContext *h, unsigned char *buf, int size);
-    pub url_read: *const fn(*mut URLContext, *mut c_uchar, c_int) -> c_int,
+    pub url_read: Option<extern "C" fn(*mut URLContext, *mut c_uchar, c_int) -> c_int>,
     // int     (*url_write)(URLContext *h, const unsigned char *buf, int size);
-    pub url_write: *const fn(*mut URLContext, *const c_char, c_int) -> c_int,
+    pub url_write: Option<extern "C" fn(*mut URLContext, *const c_uchar, c_int) -> c_int>,
     // int64_t (*url_seek)( URLContext *h, int64_t pos, int whence);
-    pub url_seek: *const fn(*mut URLContext, stdint::int64_t, c_int) -> c_int,
+    pub url_seek: Option<extern "C" fn(*mut URLContext, stdint::int64_t, c_int) -> c_int>,
     // int     (*url_close)(URLContext *h);
-    pub url_close: *const fn(*mut URLContext),
+    pub url_close: Option<extern "C" fn(*mut URLContext)>,
     // int (*url_read_pause)(URLContext *h, int pause);
-    pub url_read_pause: *const fn(*mut URLContext, c_int) -> c_int,
+    pub url_read_pause: Option<extern "C" fn(*mut URLContext, c_int) -> c_int>,
     // int64_t (*url_read_seek)(URLContext *h, int stream_index,
     //                          int64_t timestamp, int flags);
-    pub url_read_seek: *const fn(*mut URLContext, c_int, stdint::int64_t, c_int),
+    pub url_read_seek: Option<extern "C" fn(*mut URLContext, c_int, stdint::int64_t, c_int)>,
     // int (*url_get_file_handle)(URLContext *h);
-    pub url_get_file_handle: *const fn(*mut URLContext) -> c_int,
+    pub url_get_file_handle: Option<extern "C" fn(*mut URLContext) -> c_int>,
     // int (*url_get_multi_file_handle)(URLContext *h, int **handles,
     //                                  int *numhandles);
-    pub url_get_multi_file_handle: *const fn(*mut URLContext, c_int, c_int) -> c_int,
+    pub url_get_multi_file_handle: Option<extern "C" fn(*mut URLContext, c_int, c_int) -> c_int>,
     // int (*url_get_short_seek)(URLContext *h);
-    pub url_get_short_seek: *const fn(*mut URLContext) -> c_int,
+    pub url_get_short_seek: Option<extern "C" fn(*mut URLContext) -> c_int>,
     // int (*url_shutdown)(URLContext *h, int flags);
-    pub url_shutdown: *const fn(*mut URLContext, c_int) -> c_int,
+    pub url_shutdown: Option<extern "C" fn(*mut URLContext, c_int) -> c_int>,
     // const AVClass *priv_data_class;
     pub priv_data_class: Option<AVClass>,
     // int priv_data_size;
@@ -46,17 +46,17 @@ pub struct URLProtocol {
     // int flags;
     pub flags: c_int,
     // int (*url_check)(URLContext *h, int mask);
-    pub url_check: *const fn(*mut URLContext, c_int) -> c_int,
+    pub url_check: Option<extern "C" fn(*mut URLContext, c_int) -> c_int>,
     // int (*url_open_dir)(URLContext *h);
-    pub url_open_dir: *const fn(*mut URLContext) -> c_int,
+    pub url_open_dir: Option<extern "C" fn(*mut URLContext) -> c_int>,
     // int (*url_read_dir)(URLContext *h, AVIODirEntry **next);
-    pub url_read_dir: *const fn(*mut URLContext, AVIODirEntry) -> c_int,
+    pub url_read_dir: Option<extern "C" fn(*mut URLContext, AVIODirEntry) -> c_int>,
     // int (*url_close_dir)(URLContext *h);
-    pub url_close_dir: *const fn(*mut URLContext) -> c_int,
+    pub url_close_dir: Option<extern "C" fn(*mut URLContext) -> c_int>,
     // int (*url_delete)(URLContext *h);
-    pub url_delete: *const fn(*mut URLContext) -> c_int,
+    pub url_delete: Option<extern "C" fn(*mut URLContext) -> c_int>,
     // int (*url_move)(URLContext *h_src, URLContext *h_dst);
-    pub url_move: *const fn(*mut URLContext, *mut URLContext),
+    pub url_move: Option<extern "C" fn(*mut URLContext, *mut URLContext)>,
     // const char *default_whitelist;
     pub default_whitelist: *const c_char,
 }

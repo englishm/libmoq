@@ -8,40 +8,60 @@ use ffmpeg::*;
 #[no_mangle]
 pub static mut ff_libmoq_protocol: URLProtocol = URLProtocol {
     name: "moq\0".as_ptr() as *const c_char,
-    url_open: moq_open as *const fn(*mut URLContext, *const c_char, c_int) -> c_int,
-    url_write: moq_write as *const fn(*mut URLContext, *const c_char, c_int) -> c_int,
-    url_open2: std::ptr::null(),
-    url_accept: std::ptr::null(),
-    url_handshake: std::ptr::null(),
-    url_read: std::ptr::null(),
-    url_seek: std::ptr::null(),
-    url_close: std::ptr::null(),
-    url_read_pause: std::ptr::null(),
-    url_read_seek: std::ptr::null(),
-    url_get_file_handle: std::ptr::null(),
-    url_get_multi_file_handle: std::ptr::null(),
-    url_get_short_seek: std::ptr::null(),
-    url_shutdown: std::ptr::null(),
+    //url_open: moq_open as *const fn(*mut URLContext, *const c_char, c_int) -> c_int,
+    url_open: moq_open,
+    url_write: Some(moq_write),
+    url_open2: None,
+    url_accept: None,
+    url_handshake: None,
+    url_read: None,
+    url_seek: None,
+    url_close: None,
+    url_read_pause: None,
+    url_read_seek: None,
+    url_get_file_handle: None,
+    url_get_multi_file_handle: None,
+    url_get_short_seek: None,
+    url_shutdown: None,
     priv_data_class: None,
     priv_data_size: 0,
     flags: 0,
-    url_check: std::ptr::null(),
-    url_open_dir: std::ptr::null(),
-    url_read_dir: std::ptr::null(),
-    url_close_dir: std::ptr::null(),
-    url_delete: std::ptr::null(),
-    url_move: std::ptr::null(),
+    url_check: None,
+    url_open_dir: None,
+    url_read_dir: None,
+    url_close_dir: None,
+    url_delete: None,
+    url_move: None,
     default_whitelist: std::ptr::null(),
 };
 
+pub static mut moq_context: Option<AVClass> = None;
 //moq_open
 #[no_mangle]
 pub extern "C" fn moq_open(
-    _url_ctx_ptr: *mut URLContext,
+    url_ctx_ptr: *mut URLContext,
     _url: *const c_char,
     _flags: c_int,
 ) -> c_int {
     println!("moq_open");
+    unsafe {
+        moq_context = None;
+        // moq_context = Some(AVClass {
+        //     class_name: (),
+        //     item_name: (),
+        //     option: (),
+        //     version: (),
+        //     log_level_offset_offset: (),
+        //     parent_log_context_offset: (),
+        //     category: (),
+        //     get_category: (),
+        //     query_ranges: (),
+        //     child_next: (),
+        //     child_class_iterate: (),
+        // });
+    }
+    let url_context = unsafe { *url_ctx_ptr };
+    // url_context.av_class = Some(&moq_context);
     0
 }
 
@@ -52,6 +72,7 @@ pub extern "C" fn moq_write(
     _buf: *const c_uchar,
     _size: c_int,
 ) -> c_int {
+    println!("moq_write");
     0
 }
 //moq_close
