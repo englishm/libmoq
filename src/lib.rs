@@ -70,10 +70,11 @@ pub extern "C" fn moq_open(
 pub extern "C" fn moq_write(
     _url_ctx_ptr: *mut URLContext,
     _buf: *const c_uchar,
-    _size: c_int,
+    size: c_int,
 ) -> c_int {
     println!("moq_write");
-    0
+    dbg!(size);
+    size
 }
 //moq_close
 #[no_mangle]
