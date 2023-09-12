@@ -12,3 +12,13 @@ cbindgen = "0.25.0"
 
 [dependencies]
 stdint = "0.2.0"
+moq-transport = { path = "../moq-rs/moq-transport" }
+tokio = { version = "1.27", features = ["full"] }
+rustls = "0.21.2"
+rustls-pemfile = "1.0.2"
+rustls-native-certs = "0.6.3"
+quinn = "0.10"
+webtransport-quinn = "0.5"
+webtransport-generic = "0.5"
+http = "0.2.9"
+anyhow = { version = "1.0.70", features = ["backtrace"] }

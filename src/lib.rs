@@ -1,20 +1,16 @@
+use anyhow::Context;
 use std::{
     mem::size_of,
     os::raw::{c_char, c_int, c_uchar, c_void},
     ptr::null,
+    str::FromStr,
 };
+
+use moq_transport::model::broadcast;
 
 #[allow(non_camel_case_types)]
 mod ffmpeg;
 use ffmpeg::*;
-
-/// cbindgen:ignore
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[repr(C)]
-pub struct MoqContext {
-    pub av_class: *const AVClass,
-    pub foo: c_int,
-}
 
 #[allow(non_upper_case_globals)]
 #[no_mangle]
@@ -32,12 +28,16 @@ pub static mut libmoqprotocol: AVClass = AVClass {
     child_class_iterate: None,
 };
 
-#[allow(non_upper_case_globals)]
-#[no_mangle]
-pub static mut moq_context: MoqContext = MoqContext {
-    av_class: unsafe { &libmoqprotocol as *const AVClass }, // TODO: Uhhh...?
-    foo: 0,
-};
+/// cbindgen:ignore
+#[derive(Debug)]
+#[repr(C)]
+pub struct MoqContext {
+    pub av_class: *const AVClass,
+    pub foo: c_int,
+    publisher: moq_transport::model::broadcast::Publisher,
+    session: moq_transport::session::Publisher,
+    rt: tokio::runtime::Runtime,
+}
 
 #[allow(non_upper_case_globals)]
 #[no_mangle]
@@ -70,7 +70,57 @@ pub static mut ff_libmoq_protocol: URLProtocol = URLProtocol {
     default_whitelist: std::ptr::null(),
 };
 
-//pub static mut moq_context: Option<AVClass> = None;
+impl MoqContext {
+    pub fn new(url_context: URLContext) -> Result<Self, Box<dyn std::error::Error>> {
+        let bind_address = std::net::SocketAddr::from_str("[::]:0")?;
+        let uri = http::Uri::from_str("https://localhost:4443")?;
+
+        let av_class = unsafe { *url_context.av_class };
+
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()?;
+        let mut roots = rustls::RootCertStore::empty();
+        for cert in rustls_native_certs::load_native_certs().expect("could not load platform certs")
+        {
+            roots.add(&rustls::Certificate(cert.0)).unwrap();
+        }
+
+        let mut tls_config = rustls::ClientConfig::builder()
+            .with_safe_defaults()
+            .with_root_certificates(roots)
+            .with_no_client_auth();
+
+        tls_config.alpn_protocols = vec![webtransport_quinn::ALPN.to_vec()]; // this one is important
+
+        let arc_tls_config = std::sync::Arc::new(tls_config);
+        let quinn_client_config = quinn::ClientConfig::new(arc_tls_config);
+
+        let mut endpoint = quinn::Endpoint::client(bind_address)?;
+        endpoint.set_default_client_config(quinn_client_config);
+
+        let session = rt
+            .block_on(webtransport_quinn::connect(&endpoint, &uri))
+            .context("failed to create WebTransport session")?;
+
+        let mut session = rt
+            .block_on(moq_transport::Client::publisher(session))
+            .context("failed to create MoQ Transport session")?;
+
+        let (publisher, subscriber, _) = broadcast::new("quic.video");
+        session
+            .announce(subscriber)
+            .context("failed to announce broadcast")?;
+
+        Ok(Self {
+            av_class: &av_class,
+            foo: 0,
+            publisher,
+            session,
+            rt,
+        })
+    }
+}
 
 //moq_open
 #[no_mangle]
@@ -80,10 +130,7 @@ pub extern "C" fn moq_open(
     _flags: c_int,
 ) -> c_int {
     println!("moq_open");
-    // unsafe {
-    //     moq_context = None;
-    // }
-    let mut url_context = unsafe { *url_ctx_ptr };
+    let url_context = unsafe { *url_ctx_ptr };
     dbg!(&url_context);
     let av_class = unsafe { *url_context.av_class };
     dbg!(&av_class);
@@ -91,7 +138,18 @@ pub extern "C" fn moq_open(
     dbg!(&class_name);
     let moq_context_size = size_of::<MoqContext>();
     dbg!(&moq_context_size);
-    url_context.priv_data = unsafe { &mut moq_context as *mut _ as *mut c_void };
+
+    let url = unsafe { std::ffi::CStr::from_ptr(url_context.filename) };
+    dbg!(url);
+    // TODO: parse URL
+    // moq://<relay_hostname:relay_port>/<namespace>
+
+    unsafe {
+        std::ptr::write(
+            url_context.priv_data as *mut MoqContext,
+            MoqContext::new(url_context).unwrap(),
+        );
+    }
 
     // url_context.av_class = Some(&moq_context);
     0
@@ -111,6 +169,7 @@ pub extern "C" fn moq_write(
     let moq_ctx = unsafe { &mut *moq_ctx_ptr };
     dbg!(&moq_ctx.foo);
     moq_ctx.foo += 1;
+    dbg!(moq_ctx);
     size
 }
 //moq_close
