@@ -1,11 +1,14 @@
 use std::os::raw::{c_char, c_int, c_uchar, c_void};
 
+use crate::MoqContext;
+
 // Placeholder artisinally hand transcribed definitions
 // until we create proper bindgen generated ones
 // and/or update an existing ffmpeg-sys/ffmpeg-sys-next crate
 
 /// cbindgen:ignore
 #[repr(C)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct URLProtocol {
     //const char *name;
     pub name: *const c_char,
@@ -40,7 +43,7 @@ pub struct URLProtocol {
     // int (*url_shutdown)(URLContext *h, int flags);
     pub url_shutdown: Option<extern "C" fn(*mut URLContext, c_int) -> c_int>,
     // const AVClass *priv_data_class;
-    pub priv_data_class: Option<AVClass>,
+    pub priv_data_class: *const AVClass,
     // int priv_data_size;
     pub priv_data_size: c_int,
     // int flags;
