@@ -77,9 +77,13 @@ impl MoqContext {
 
         let av_class = unsafe { *url_context.av_class };
 
+        // let rt = tokio::runtime::Builder::new_multi_thread()
+        //     .enable_all()
+        //     .build()?;
         let rt = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()?;
+        let _enter_guard = rt.enter(); // Let quinn know we have a runtime?
         let mut roots = rustls::RootCertStore::empty();
         for cert in rustls_native_certs::load_native_certs().expect("could not load platform certs")
         {
