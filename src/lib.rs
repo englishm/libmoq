@@ -43,6 +43,7 @@ pub struct MoqContext {
     publisher: Arc<Mutex<broadcast::Publisher>>,
     session_join_handle: tokio::task::JoinHandle<()>,
     rt: tokio::runtime::Runtime,
+    unread: Vec<u8>,
 }
 
 #[allow(non_upper_case_globals)]
@@ -143,6 +144,7 @@ impl MoqContext {
             publisher: Arc::new(Mutex::new(publisher)),
             session_join_handle,
             rt,
+            unread: vec![],
         })
     }
 }
@@ -189,18 +191,26 @@ pub extern "C" fn moq_write(
     let mut moq_ctx = unsafe { &mut *moq_ctx_ptr };
     let mut buf: &[u8] = unsafe { std::slice::from_raw_parts(buf_ptr, size.try_into().unwrap()) };
 
+    // append new bytes from buf to unread
+    moq_ctx.unread.append(&mut buf.to_vec());
+
+
     println!("tracks: {:?}", moq_ctx.tracks.len());
+    println!("size: {}", size);
 
     if moq_ctx.tracks.len() == 0 {
         println!("Populating init and .catalog tracks");
-        let read_bytes = match init_tracks(&mut moq_ctx, buf, size){
+        let read_bytes = match init_tracks(&mut moq_ctx){
             Ok(read_bytes) => read_bytes,
             Err(err) => {
                 // Failed to parse init tracks
                 todo!("Handle error: {:?}", err)
             },
         };
-        return read_bytes;
+        // drain read bytes from unread
+        moq_ctx.unread.drain(0..(read_bytes as usize));
+        // report that we've read all the bytes (at least into our unread buffer)
+        return size;
     }
 
 

@@ -15,7 +15,7 @@ use crate::MoqContext;
 pub fn read_atom<R: Read>(reader: &mut R) -> anyhow::Result<Vec<u8>> {
     // Read the 8 bytes for the size + type
     let mut buf = [0u8; 8];
-    reader.read_exact(&mut buf)?;
+    let bytes_read = reader.read_exact(&mut buf)?;
 
     // Convert the first 4 bytes into the size.
     let size = u32::from_be_bytes(buf[0..4].try_into()?) as u64;
