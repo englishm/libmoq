@@ -59,8 +59,7 @@ pub fn read_atom<R: Read>(reader: &mut R) -> anyhow::Result<Vec<u8>> {
 
 // TODO: Set up catalog and init tracks
 pub fn init_tracks(moq_ctx: &mut MoqContext) -> Result<c_int, anyhow::Error> {
-    let b = &mut moq_ctx.publisher;
-    let mut broadcast = b.lock().unwrap();
+    let mut broadcast = moq_ctx.publisher.clone().unwrap();
 
     let mut buf = &moq_ctx.unread as &[u8];
     let size = buf.len() as c_int;
@@ -340,4 +339,56 @@ fn serve_catalog(
     segment.write_chunk(catalog_str.into())?;
 
     Ok(())
+}
+
+pub fn handle_atom(moq_ctx: &mut MoqContext) -> Result<c_int, anyhow::Error> {
+    let mut reader = Cursor::new(&moq_ctx.unread);
+    let atom = read_atom(&mut reader)?;
+    let atom_len = atom.len() as c_int;
+
+    let mut reader = Cursor::new(&atom);
+    let header = mp4::BoxHeader::read(&mut reader)?;
+    dbg!(header.name, header.size, atom.len());
+
+    match header.name {
+        mp4::BoxType::MoofBox => {
+            let moof =
+                mp4::MoofBox::read_box(&mut reader, header.size).context("failed to read MP4")?;
+
+            // Process the moof.
+            let fragment = Fragment::new(moof)?;
+            let name = fragment.track.to_string();
+
+            // Get the track for this moof.
+            let track = moq_ctx
+                .tracks
+                .get_mut(&name)
+                .context("failed to find track")?;
+
+            // Save the track ID for the next iteration, which must be a mdat.
+            anyhow::ensure!(moq_ctx.track_name.is_none(), "multiple moof atoms");
+            moq_ctx.track_name.replace(name);
+
+            // Publish the moof header, creating a new segment if it's a keyframe.
+            track
+                .header(atom, fragment)
+                .context("failed to publish moof")?;
+        }
+        mp4::BoxType::MdatBox => {
+            // Get the track ID from the previous moof.
+            let name = moq_ctx.track_name.take().context("missing moof")?;
+            let track = moq_ctx
+                .tracks
+                .get_mut(&name)
+                .context("failed to find track")?;
+
+            // Publish the mdat atom.
+            track.data(atom).context("failed to publish mdat")?;
+        }
+
+        _ => {
+            // Skip unknown atoms
+        }
+    };
+    Ok(atom_len)
 }

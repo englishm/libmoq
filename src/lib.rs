@@ -40,10 +40,11 @@ pub struct MoqContext {
     pub av_class: *const AVClass,
     pub foo: c_int,
     pub tracks: HashMap<String, media::Track>,
-    publisher: Arc<Mutex<broadcast::Publisher>>,
+    publisher: Option<broadcast::Publisher>,
     session_join_handle: tokio::task::JoinHandle<()>,
     rt: tokio::runtime::Runtime,
     unread: Vec<u8>,
+    track_name: Option<String>,
 }
 
 #[allow(non_upper_case_globals)]
@@ -92,14 +93,14 @@ impl MoqContext {
         let av_class = unsafe { *url_context.av_class };
 
         // create a hashmap to hold tracks on MoqContext
-        let mut tracks = HashMap::new();
+        let tracks = HashMap::new();
 
-        // let rt = tokio::runtime::Builder::new_multi_thread()
-        //     .enable_all()
-        //     .build()?;
-        let rt = tokio::runtime::Builder::new_current_thread()
+        let rt = tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .build()?;
+        // let rt = tokio::runtime::Builder::new_current_thread()
+        //     .enable_all()
+        //     .build()?;
         let _enter_guard = rt.enter(); // Let quinn know we have a runtime?
 
         let (publisher, subscriber) = broadcast::new();
@@ -141,10 +142,11 @@ impl MoqContext {
             av_class: &av_class,
             foo: 0,
             tracks,
-            publisher: Arc::new(Mutex::new(publisher)),
+            publisher: Some(publisher),
             session_join_handle,
             rt,
             unread: vec![],
+            track_name: None,
         })
     }
 }
@@ -213,45 +215,17 @@ pub extern "C" fn moq_write(
         return size;
     }
 
+    // Handle moof or mdat atoms
+    handle_atom(&mut moq_ctx);
 
-    let atom = match read_atom(&mut buf) {
-        Ok(atom) => atom,
-        Err(err) => {
-            // Failed to read a complete atom
-            vec![]
-            // TODO: maybe read into "unparsed" vec
-        }
-    };
+    // Get a mutable reference to the publisher
+    //let mut publisher = &moq_ctx.publisher.unwrap();
+
+    // TODO: drive the rt to continue running session.run()?
     //rt.enter();
-    // TODO: Figure out how to set up catalog and init tracks
-    //
 
-    let mut reader = Cursor::new(&atom);
-    let _header = match mp4::BoxHeader::read(&mut reader) {
-        Ok(header) => header,
-        Err(err) => {
-            // Failed to parse atom header
-            todo!("Handle error: {:?}", err)
-        },
-    };
-
-
-
-    let mut publisher = Arc::try_unwrap(moq_ctx.publisher.clone()).unwrap().into_inner().unwrap();
-    let _track = publisher.create_track("1").unwrap();
-
-
-    // TODO: Do stuff with this atom
-    // let track = moq_ctx.publisher.create_track("1")?;
-    // let segment = track.create_segment(sequence, order)?;
-    // segment.bytes(data);
-    //
-    // TODO: handle error if connection dropped
-
-    // TODO: Read more than one atom per write?
-
-    // return number of bytes read
-    atom.len().try_into().unwrap()
+    // report that we've read all the bytes (at least into our unread buffer)
+    size
 }
 //moq_close
 #[no_mangle]
@@ -261,8 +235,8 @@ pub extern "C" fn moq_close(url_ctx_ptr: *mut URLContext) -> c_int {
     let moq_ctx_ptr = url_context.priv_data as *mut MoqContext;
     let moq_ctx = unsafe { &mut *moq_ctx_ptr };
 
-    // get owned publisher out of Arc<Mutex<...>>
-    let publisher = Arc::try_unwrap(moq_ctx.publisher.clone()).unwrap().into_inner().unwrap();
+    // Take the publisher from moq_ctx
+    let publisher = moq_ctx.publisher.take().unwrap();
     // close publisher
     publisher.close(moq_transport::Error::Closed).unwrap();
 
