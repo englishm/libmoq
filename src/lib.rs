@@ -191,11 +191,12 @@ pub extern "C" fn moq_write(
     let url_context = unsafe { *url_ctx_ptr };
     let moq_ctx_ptr = url_context.priv_data as *mut MoqContext;
     let mut moq_ctx = unsafe { &mut *moq_ctx_ptr };
-    let mut buf: &[u8] = unsafe { std::slice::from_raw_parts(buf_ptr, size.try_into().unwrap()) };
+    let buf: &[u8] = unsafe { std::slice::from_raw_parts(buf_ptr, size.try_into().unwrap()) };
 
+    dbg!(moq_ctx.unread.len());
     // append new bytes from buf to unread
     moq_ctx.unread.append(&mut buf.to_vec());
-
+    dbg!(moq_ctx.unread.len());
 
     println!("tracks: {:?}", moq_ctx.tracks.len());
     println!("size: {}", size);
@@ -215,8 +216,27 @@ pub extern "C" fn moq_write(
         return size;
     }
 
-    // Handle moof or mdat atoms
-    handle_atom(&mut moq_ctx);
+    while moq_ctx.unread.len() > 8 {
+        // Handle moof or mdat atoms
+        match handle_atom(&mut moq_ctx) {
+            Ok(read_bytes) => {
+                // drain read bytes from unread
+                moq_ctx.unread.drain(0..(read_bytes as usize));
+                // report that we've read all the bytes (at least into our unread buffer)
+                return size;
+            },
+            Err(err) => {
+                // Failed to parse init tracks
+                todo!("Handle error: {:?}", err)
+            },
+        }
+    }
+
+    moq_ctx.rt.block_on(async {
+        // drive the rt to continue running session.run()?
+        tokio::task::yield_now().await;
+
+    });
 
     // Get a mutable reference to the publisher
     //let mut publisher = &moq_ctx.publisher.unwrap();

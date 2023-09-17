@@ -348,7 +348,7 @@ pub fn handle_atom(moq_ctx: &mut MoqContext) -> Result<c_int, anyhow::Error> {
 
     let mut reader = Cursor::new(&atom);
     let header = mp4::BoxHeader::read(&mut reader)?;
-    dbg!(header.name, header.size, atom.len());
+    //    dbg!(header.name, header.size, atom.len());
 
     match header.name {
         mp4::BoxType::MoofBox => {
