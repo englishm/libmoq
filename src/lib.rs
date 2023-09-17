@@ -45,6 +45,8 @@ pub struct MoqContext {
     rt: tokio::runtime::Runtime,
     unread: Vec<u8>,
     track_name: Option<String>,
+    _catalog: Option<track::Publisher>,
+    _init: Option<track::Publisher>,
 }
 
 #[allow(non_upper_case_globals)]
@@ -147,6 +149,8 @@ impl MoqContext {
             rt,
             unread: vec![],
             track_name: None,
+            _catalog: None,
+            _init: None,
         })
     }
 }
@@ -201,12 +205,13 @@ pub extern "C" fn moq_write(
     println!("tracks: {:?}", moq_ctx.tracks.len());
     println!("size: {}", size);
 
-    if moq_ctx.tracks.len() == 0 {
+    if moq_ctx._catalog.is_none() {
         println!("Populating init and .catalog tracks");
         let read_bytes = match init_tracks(&mut moq_ctx){
             Ok(read_bytes) => read_bytes,
             Err(err) => {
                 // Failed to parse init tracks
+                dbg!(moq_ctx);
                 todo!("Handle error: {:?}", err)
             },
         };
@@ -235,7 +240,6 @@ pub extern "C" fn moq_write(
     moq_ctx.rt.block_on(async {
         // drive the rt to continue running session.run()?
         tokio::task::yield_now().await;
-
     });
 
     // Get a mutable reference to the publisher

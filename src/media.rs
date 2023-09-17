@@ -120,6 +120,8 @@ pub fn init_tracks(moq_ctx: &mut MoqContext) -> Result<c_int, anyhow::Error> {
     serve_catalog(&mut catalog, init_track.name.to_string(), &moov, &tracks)?;
 
     moq_ctx.tracks = tracks;
+    moq_ctx._catalog = Some(catalog);
+    moq_ctx._init = Some(init_track);
 
     Ok(bytes_read as c_int)
 }
