@@ -1,7 +1,5 @@
 use std::os::raw::{c_char, c_int, c_uchar, c_void};
 
-use crate::MoqContext;
-
 // Placeholder artisinally hand transcribed definitions
 // until we create proper bindgen generated ones
 // and/or update an existing ffmpeg-sys/ffmpeg-sys-next crate

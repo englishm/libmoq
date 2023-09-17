@@ -1,16 +1,21 @@
 use anyhow::Context;
 use std::{
+    io::Cursor,
     mem::size_of,
     os::raw::{c_char, c_int, c_uchar, c_void},
     ptr::null,
-    str::FromStr,
+    str::FromStr, sync::{Arc, Mutex}, collections::HashMap,
 };
 
 use moq_transport::model::broadcast;
+use moq_transport::model::track;
 
 #[allow(non_camel_case_types)]
 mod ffmpeg;
 use ffmpeg::*;
+
+mod media;
+use media::*;
 
 #[allow(non_upper_case_globals)]
 #[no_mangle]
@@ -34,8 +39,9 @@ pub static mut libmoqprotocol: AVClass = AVClass {
 pub struct MoqContext {
     pub av_class: *const AVClass,
     pub foo: c_int,
-    publisher: moq_transport::model::broadcast::Publisher,
-    session: moq_transport::session::Publisher,
+    pub tracks: HashMap<String, media::Track>,
+    publisher: Arc<Mutex<broadcast::Publisher>>,
+    session_join_handle: tokio::task::JoinHandle<()>,
     rt: tokio::runtime::Runtime,
 }
 
@@ -73,9 +79,19 @@ pub static mut ff_libmoq_protocol: URLProtocol = URLProtocol {
 impl MoqContext {
     pub fn new(url_context: URLContext) -> Result<Self, Box<dyn std::error::Error>> {
         let bind_address = std::net::SocketAddr::from_str("[::]:0")?;
-        let uri = http::Uri::from_str("https://localhost:4443")?;
+
+        let url_cstr = unsafe { std::ffi::CStr::from_ptr(url_context.filename) };
+        let url_str = String::from_utf8_lossy(url_cstr.to_bytes()).to_string();
+        let url = http::Uri::from_str(&url_str)?;
+        let mut url_parts = http::Uri::into_parts(url);
+        // change uri scheme from moq to https
+        url_parts.scheme = Some(http::uri::Scheme::HTTPS);
+        let url = http::Uri::from_parts(url_parts)?;
 
         let av_class = unsafe { *url_context.av_class };
+
+        // create a hashmap to hold tracks on MoqContext
+        let mut tracks = HashMap::new();
 
         // let rt = tokio::runtime::Builder::new_multi_thread()
         //     .enable_all()
@@ -84,6 +100,9 @@ impl MoqContext {
             .enable_all()
             .build()?;
         let _enter_guard = rt.enter(); // Let quinn know we have a runtime?
+
+        let (publisher, subscriber) = broadcast::new();
+
         let mut roots = rustls::RootCertStore::empty();
         for cert in rustls_native_certs::load_native_certs().expect("could not load platform certs")
         {
@@ -104,23 +123,25 @@ impl MoqContext {
         endpoint.set_default_client_config(quinn_client_config);
 
         let session = rt
-            .block_on(webtransport_quinn::connect(&endpoint, &uri))
+            .block_on(webtransport_quinn::connect(&endpoint, &url))
             .context("failed to create WebTransport session")?;
 
-        let mut session = rt
-            .block_on(moq_transport::Client::publisher(session))
+        let session = rt
+            .block_on(moq_transport::session::Client::publisher(
+                session, subscriber,
+            ))
             .context("failed to create MoQ Transport session")?;
 
-        let (publisher, subscriber, _) = broadcast::new("quic.video");
-        session
-            .announce(subscriber)
-            .context("failed to announce broadcast")?;
+        let session_join_handle = tokio::spawn(async move {
+            session.run().await.unwrap();
+        });
 
         Ok(Self {
             av_class: &av_class,
             foo: 0,
-            publisher,
-            session,
+            tracks,
+            publisher: Arc::new(Mutex::new(publisher)),
+            session_join_handle,
             rt,
         })
     }
@@ -143,11 +164,6 @@ pub extern "C" fn moq_open(
     let moq_context_size = size_of::<MoqContext>();
     dbg!(&moq_context_size);
 
-    let url = unsafe { std::ffi::CStr::from_ptr(url_context.filename) };
-    dbg!(url);
-    // TODO: parse URL
-    // moq://<relay_hostname:relay_port>/<namespace>
-
     unsafe {
         std::ptr::write(
             url_context.priv_data as *mut MoqContext,
@@ -163,21 +179,85 @@ pub extern "C" fn moq_open(
 #[no_mangle]
 pub extern "C" fn moq_write(
     url_ctx_ptr: *mut URLContext,
-    _buf: *const c_uchar,
+    buf_ptr: *const c_uchar,
     size: c_int,
 ) -> c_int {
-    //println!("moq_write");
+    println!("moq_write");
     //dbg!(size);
     let url_context = unsafe { *url_ctx_ptr };
     let moq_ctx_ptr = url_context.priv_data as *mut MoqContext;
-    let moq_ctx = unsafe { &mut *moq_ctx_ptr };
-    dbg!(&moq_ctx.foo);
-    moq_ctx.foo += 1;
-    dbg!(moq_ctx);
-    size
+    let mut moq_ctx = unsafe { &mut *moq_ctx_ptr };
+    let mut buf: &[u8] = unsafe { std::slice::from_raw_parts(buf_ptr, size.try_into().unwrap()) };
+
+    println!("tracks: {:?}", moq_ctx.tracks.len());
+
+    if moq_ctx.tracks.len() == 0 {
+        println!("Populating init and .catalog tracks");
+        let read_bytes = match init_tracks(&mut moq_ctx, buf, size){
+            Ok(read_bytes) => read_bytes,
+            Err(err) => {
+                // Failed to parse init tracks
+                todo!("Handle error: {:?}", err)
+            },
+        };
+        return read_bytes;
+    }
+
+
+    let atom = match read_atom(&mut buf) {
+        Ok(atom) => atom,
+        Err(err) => {
+            // Failed to read a complete atom
+            vec![]
+            // TODO: maybe read into "unparsed" vec
+        }
+    };
+    //rt.enter();
+    // TODO: Figure out how to set up catalog and init tracks
+    //
+
+    let mut reader = Cursor::new(&atom);
+    let _header = match mp4::BoxHeader::read(&mut reader) {
+        Ok(header) => header,
+        Err(err) => {
+            // Failed to parse atom header
+            todo!("Handle error: {:?}", err)
+        },
+    };
+
+
+
+    let mut publisher = Arc::try_unwrap(moq_ctx.publisher.clone()).unwrap().into_inner().unwrap();
+    let _track = publisher.create_track("1").unwrap();
+
+
+    // TODO: Do stuff with this atom
+    // let track = moq_ctx.publisher.create_track("1")?;
+    // let segment = track.create_segment(sequence, order)?;
+    // segment.bytes(data);
+    //
+    // TODO: handle error if connection dropped
+
+    // TODO: Read more than one atom per write?
+
+    // return number of bytes read
+    atom.len().try_into().unwrap()
 }
 //moq_close
 #[no_mangle]
-pub extern "C" fn moq_close(_url_ctx_ptr: *mut URLContext) -> c_int {
+pub extern "C" fn moq_close(url_ctx_ptr: *mut URLContext) -> c_int {
+    println!("moq_close");
+    let url_context = unsafe { *url_ctx_ptr };
+    let moq_ctx_ptr = url_context.priv_data as *mut MoqContext;
+    let moq_ctx = unsafe { &mut *moq_ctx_ptr };
+
+    // get owned publisher out of Arc<Mutex<...>>
+    let publisher = Arc::try_unwrap(moq_ctx.publisher.clone()).unwrap().into_inner().unwrap();
+    // close publisher
+    publisher.close(moq_transport::Error::Closed).unwrap();
+
+    // TODO: get result of session.run() from session_join_handle?
+
     0
+
 }
