@@ -46,26 +46,37 @@ pub fn read_atom<R: Read>(reader: &mut R) -> anyhow::Result<Vec<u8>> {
         size => reader.take(size - 8),
     };
 
+    // check max bytes limit will read
+    let target_size = limit.limit();
+    println!("target_size: {}", target_size);
+
     // Append to the vector and return it.
-    let _read_bytes = limit.read_to_end(&mut raw)?;
+    let read_bytes = limit.read_to_end(&mut raw)?;
+    println!("read_bytes: {}", read_bytes);
 
     Ok(raw)
 }
 
 // TODO: Set up catalog and init tracks
-pub fn init_tracks(
-    moq_ctx: &mut MoqContext,
-    mut buf: &[u8],
-    size: c_int,
-) -> Result<c_int, anyhow::Error> {
+pub fn init_tracks(moq_ctx: &mut MoqContext) -> Result<c_int, anyhow::Error> {
     let b = &mut moq_ctx.publisher;
     let mut broadcast = b.lock().unwrap();
+
+    let mut buf = &moq_ctx.unread as &[u8];
+    let size = buf.len() as c_int;
+    dbg!(buf, size);
 
     let ftyp = read_atom(&mut buf)?;
     anyhow::ensure!(&ftyp[4..8] == b"ftyp", "expected ftyp atom");
 
+    if (size - ftyp.len() as c_int) < 8 {
+        // Don't try to read the moov atom if we don't have enough bytes
+        return Ok(0);
+    }
+
     let moov = read_atom(&mut buf)?;
     anyhow::ensure!(&moov[4..8] == b"moov", "expected moov atom");
+    dbg!(moov.len());
 
     let mut init = ftyp;
     init.extend(&moov);
