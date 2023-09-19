@@ -1,6 +1,5 @@
 use anyhow::Context;
 use std::{
-    io::Cursor,
     mem::size_of,
     os::raw::{c_char, c_int, c_uchar, c_void},
     ptr::null,
@@ -98,6 +97,7 @@ impl MoqContext {
         let tracks = HashMap::new();
 
         let rt = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(4)
             .enable_all()
             .build()?;
         // let rt = tokio::runtime::Builder::new_current_thread()
@@ -117,6 +117,9 @@ impl MoqContext {
             .with_safe_defaults()
             .with_root_certificates(roots)
             .with_no_client_auth();
+
+        // TODO: REMOVE THIS
+        tls_config.key_log = Arc::new(rustls::KeyLogFile::new());
 
         tls_config.alpn_protocols = vec![webtransport_quinn::ALPN.to_vec()]; // this one is important
 
@@ -227,26 +230,19 @@ pub extern "C" fn moq_write(
             Ok(read_bytes) => {
                 // drain read bytes from unread
                 moq_ctx.unread.drain(0..(read_bytes as usize));
-                // report that we've read all the bytes (at least into our unread buffer)
+
+                // Return after handling only one atom for some reason???
                 return size;
             },
             Err(err) => {
                 // Failed to parse init tracks
                 todo!("Handle error: {:?}", err)
             },
-        }
+        };
     }
 
-    moq_ctx.rt.block_on(async {
-        // drive the rt to continue running session.run()?
-        tokio::task::yield_now().await;
-    });
 
-    // Get a mutable reference to the publisher
-    //let mut publisher = &moq_ctx.publisher.unwrap();
-
-    // TODO: drive the rt to continue running session.run()?
-    //rt.enter();
+    //dbg!(&moq_ctx.tracks);
 
     // report that we've read all the bytes (at least into our unread buffer)
     size

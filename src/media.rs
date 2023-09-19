@@ -329,8 +329,8 @@ fn serve_catalog(
             "codec": codec_str,
             "width": width,
             "height": height,
-            "frame_rate": 30, //TODO: get from moov
-            "bit_rate": 15000, //TODO: get from moov
+            "frame_rate": 24, //TODO: get from moov
+            "bit_rate": 1500000, //TODO: get from moov
             }
         ]
     });
@@ -383,6 +383,8 @@ pub fn handle_atom(moq_ctx: &mut MoqContext) -> Result<c_int, anyhow::Error> {
                 .tracks
                 .get_mut(&name)
                 .context("failed to find track")?;
+
+            // TODO: Make sure this mdat goes with the last moof we saw
 
             // Publish the mdat atom.
             track.data(atom).context("failed to publish mdat")?;
