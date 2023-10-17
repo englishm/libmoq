@@ -44,7 +44,7 @@ pub static mut ff_libmoq_protocol: URLProtocol = URLProtocol {
     url_get_short_seek: None,
     url_shutdown: None,
     priv_data_class: unsafe { &libmoqprotocol as *const AVClass }, // TODO: Uhhhhh...?
-    priv_data_size: size_of::<MoqContext>() as c_int,
+    priv_data_size: size_of::<FFMoqContext>() as c_int,
     flags: 0,
     url_check: None,
     url_open_dir: None,
@@ -67,8 +67,8 @@ pub extern "C" fn ff_moq_open(
 
     unsafe {
         std::ptr::write(
-            url_context.priv_data as *mut MoqContext,
-            MoqContext::new(url_context).unwrap(),
+            url_context.priv_data as *mut FFMoqContext,
+            FFMoqContext::new(url_context).unwrap(),
         );
     }
 
@@ -85,7 +85,7 @@ pub extern "C" fn ff_moq_write(
     println!("moq_write");
     //dbg!(size);
     let url_context = unsafe { *url_ctx_ptr };
-    let moq_ctx_ptr = url_context.priv_data as *mut MoqContext;
+    let moq_ctx_ptr = url_context.priv_data as *mut FFMoqContext;
     let mut moq_ctx = unsafe { &mut *moq_ctx_ptr };
     let buf: &[u8] = unsafe { std::slice::from_raw_parts(buf_ptr, size.try_into().unwrap()) };
 
@@ -140,7 +140,7 @@ pub extern "C" fn ff_moq_write(
 pub extern "C" fn ff_moq_close(url_ctx_ptr: *mut URLContext) -> c_int {
     println!("moq_close");
     let url_context = unsafe { *url_ctx_ptr };
-    let moq_ctx_ptr = url_context.priv_data as *mut MoqContext;
+    let moq_ctx_ptr = url_context.priv_data as *mut FFMoqContext;
     let moq_ctx = unsafe { &mut *moq_ctx_ptr };
 
     // Take the publisher from moq_ctx

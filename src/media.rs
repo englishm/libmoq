@@ -9,7 +9,7 @@ use std::io::Read;
 use std::os::raw::c_int;
 use std::time;
 
-use crate::MoqContext;
+use crate::FFMoqContext;
 
 // Read a full MP4 atom into a vector.
 pub fn read_atom<R: Read>(reader: &mut R) -> anyhow::Result<Vec<u8>> {
@@ -58,7 +58,7 @@ pub fn read_atom<R: Read>(reader: &mut R) -> anyhow::Result<Vec<u8>> {
 }
 
 // TODO: Set up catalog and init tracks
-pub fn init_tracks(moq_ctx: &mut MoqContext) -> Result<c_int, anyhow::Error> {
+pub fn init_tracks(moq_ctx: &mut FFMoqContext) -> Result<c_int, anyhow::Error> {
     let mut broadcast = moq_ctx.publisher.clone().unwrap();
 
     let mut buf = &moq_ctx.unread as &[u8];
@@ -343,7 +343,7 @@ fn serve_catalog(
     Ok(())
 }
 
-pub fn handle_atom(moq_ctx: &mut MoqContext) -> Result<c_int, anyhow::Error> {
+pub fn handle_atom(moq_ctx: &mut FFMoqContext) -> Result<c_int, anyhow::Error> {
     let mut reader = Cursor::new(&moq_ctx.unread);
     let atom = read_atom(&mut reader)?;
     let atom_len = atom.len() as c_int;

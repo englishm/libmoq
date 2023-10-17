@@ -1,7 +1,6 @@
 use anyhow::Context;
 use std::{
     collections::HashMap,
-    os::raw::c_int,
     str::FromStr,
     sync::Arc,
 };
@@ -13,7 +12,7 @@ use crate::media;
 /// cbindgen:ignore
 #[derive(Debug)]
 #[repr(C)]
-pub struct MoqContext {
+pub struct FFMoqContext {
     pub av_class: *const AVClass,
     pub tracks: HashMap<String, media::Track>,
     pub publisher: Option<broadcast::Publisher>,
@@ -25,7 +24,7 @@ pub struct MoqContext {
     pub _init: Option<track::Publisher>,
 }
 
-impl MoqContext {
+impl FFMoqContext {
     pub fn new(url_context: URLContext) -> Result<Self, Box<dyn std::error::Error>> {
         let bind_address = std::net::SocketAddr::from_str("[::]:0")?;
 
