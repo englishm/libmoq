@@ -16,10 +16,6 @@ use std::{
     sync::Arc,
 };
 
-#[cfg(feature = "dhat-profiling")]
-#[global_allocator]
-static ALLOC: dhat::Alloc = dhat::Alloc;
-
 /// cbindgen:ignore
 #[derive(Debug)]
 #[repr(C)]
@@ -33,7 +29,6 @@ pub struct FFMoqContext {
     pub track_name: Option<String>,
     pub _catalog: Option<track::Publisher>,
     pub _init: Option<track::Publisher>,
-    pub profiler: Option<dhat::Profiler>,
 }
 
 impl FFMoqContext {
@@ -111,7 +106,6 @@ impl FFMoqContext {
             track_name: None,
             _catalog: None,
             _init: None,
-            profiler: None,
         })
     }
 }
@@ -144,7 +138,7 @@ pub static mut ff_libmoq_protocol: URLProtocol = URLProtocol {
     url_handshake: None,
     url_read: None,
     url_seek: None,
-    url_close: Some(ff_moq_close),
+    url_close: None,
     url_read_pause: None,
     url_read_seek: None,
     url_get_file_handle: None,
@@ -171,12 +165,6 @@ pub extern "C" fn ff_moq_open(
     _flags: c_int,
 ) -> c_int {
     println!("moq_open");
-
-    let _profiler = None;
-
-    #[cfg(feature = "dhat-profiling")]
-    let _profiler = Some(dhat::Profiler::new_heap());
-
     let url_context = unsafe { *url_ctx_ptr };
 
     unsafe {
@@ -185,10 +173,6 @@ pub extern "C" fn ff_moq_open(
             FFMoqContext::new(url_context).unwrap(),
         );
     }
-    let moq_ctx_ptr = url_context.priv_data as *mut FFMoqContext;
-    let moq_ctx = unsafe { &mut *moq_ctx_ptr };
-
-    moq_ctx.profiler = _profiler;
 
     0
 }
@@ -265,8 +249,6 @@ pub extern "C" fn ff_moq_close(url_ctx_ptr: *mut URLContext) -> c_int {
     let publisher = moq_ctx.publisher.take().unwrap();
     // close publisher
     publisher.close(moq_transport::cache::CacheError::Closed).unwrap();
-
-    let _profiler = moq_ctx.profiler.take().unwrap();
 
     // TODO: get result of session.run() from session_join_handle?
 
