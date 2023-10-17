@@ -25,7 +25,7 @@ pub struct URLProtocol {
     // int64_t (*url_seek)( URLContext *h, int64_t pos, int whence);
     pub url_seek: Option<extern "C" fn(*mut URLContext, stdint::int64_t, c_int) -> c_int>,
     // int     (*url_close)(URLContext *h);
-    pub url_close: Option<extern "C" fn(*mut URLContext)>,
+    pub url_close: Option<extern "C" fn(*mut URLContext) -> c_int>,
     // int (*url_read_pause)(URLContext *h, int pause);
     pub url_read_pause: Option<extern "C" fn(*mut URLContext, c_int) -> c_int>,
     // int64_t (*url_read_seek)(URLContext *h, int stream_index,
