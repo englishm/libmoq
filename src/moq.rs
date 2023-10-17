@@ -15,7 +15,6 @@ use crate::media;
 #[repr(C)]
 pub struct MoqContext {
     pub av_class: *const AVClass,
-    pub foo: c_int,
     pub tracks: HashMap<String, media::Track>,
     pub publisher: Option<broadcast::Publisher>,
     pub session_join_handle: tokio::task::JoinHandle<()>,
@@ -92,7 +91,6 @@ impl MoqContext {
 
         Ok(Self {
             av_class: &av_class,
-            foo: 0,
             tracks,
             publisher: Some(publisher),
             session_join_handle,
