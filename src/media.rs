@@ -1,5 +1,5 @@
 use anyhow::Context;
-use moq_transport::model::{segment, track};
+use moq_transport::cache::{segment, track};
 use moq_transport::VarInt;
 use mp4::{self, ReadBox};
 use serde_json::json;
@@ -57,7 +57,7 @@ pub fn read_atom<R: Read>(reader: &mut R) -> anyhow::Result<Vec<u8>> {
     Ok(raw)
 }
 
-// TODO: Set up catalog and init tracks
+// Set up catalog and init tracks
 pub fn init_tracks(moq_ctx: &mut FFMoqContext) -> Result<c_int, anyhow::Error> {
     let mut broadcast = moq_ctx.publisher.clone().unwrap();
 

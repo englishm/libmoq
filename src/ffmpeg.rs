@@ -1,9 +1,10 @@
 use crate::ffmpeg_types::*;
 use crate::media::*;
 //use crate::moq::*;
-use moq_transport::model::broadcast;
-use moq_transport::model::track;
+use moq_transport::cache::broadcast;
+use moq_transport::cache::track;
 use crate::media;
+use url;
 
 use anyhow::Context;
 use std::{
@@ -40,7 +41,8 @@ impl FFMoqContext {
         let mut url_parts = http::Uri::into_parts(url);
         // change uri scheme from moq to https
         url_parts.scheme = Some(http::uri::Scheme::HTTPS);
-        let url = http::Uri::from_parts(url_parts)?;
+        let uri = http::Uri::from_parts(url_parts)?;
+        let url = url::Url::parse(&uri.to_string())?;
 
         let av_class = unsafe { *url_context.av_class };
 
@@ -246,7 +248,7 @@ pub extern "C" fn ff_moq_close(url_ctx_ptr: *mut URLContext) -> c_int {
     // Take the publisher from moq_ctx
     let publisher = moq_ctx.publisher.take().unwrap();
     // close publisher
-    publisher.close(moq_transport::Error::Closed).unwrap();
+    publisher.close(moq_transport::cache::CacheError::Closed).unwrap();
 
     // TODO: get result of session.run() from session_join_handle?
 
