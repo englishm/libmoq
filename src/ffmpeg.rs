@@ -29,8 +29,8 @@ pub static mut libmoqprotocol: AVClass = AVClass {
 pub static mut ff_libmoq_protocol: URLProtocol = URLProtocol {
     name: "moq\0".as_ptr() as *const c_char,
     //url_open: moq_open as *const fn(*mut URLContext, *const c_char, c_int) -> c_int,
-    url_open: moq_open,
-    url_write: Some(moq_write),
+    url_open: ff_moq_open,
+    url_write: Some(ff_moq_write),
     url_open2: None,
     url_accept: None,
     url_handshake: None,
@@ -57,7 +57,7 @@ pub static mut ff_libmoq_protocol: URLProtocol = URLProtocol {
 
 //moq_open
 #[no_mangle]
-pub extern "C" fn moq_open(
+pub extern "C" fn ff_moq_open(
     url_ctx_ptr: *mut URLContext,
     _url: *const c_char,
     _flags: c_int,
@@ -85,7 +85,7 @@ pub extern "C" fn moq_open(
 
 //moq_write
 #[no_mangle]
-pub extern "C" fn moq_write(
+pub extern "C" fn ff_moq_write(
     url_ctx_ptr: *mut URLContext,
     buf_ptr: *const c_uchar,
     size: c_int,
@@ -145,7 +145,7 @@ pub extern "C" fn moq_write(
 }
 //moq_close
 #[no_mangle]
-pub extern "C" fn moq_close(url_ctx_ptr: *mut URLContext) -> c_int {
+pub extern "C" fn ff_moq_close(url_ctx_ptr: *mut URLContext) -> c_int {
     println!("moq_close");
     let url_context = unsafe { *url_ctx_ptr };
     let moq_ctx_ptr = url_context.priv_data as *mut MoqContext;
