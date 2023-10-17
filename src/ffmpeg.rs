@@ -223,7 +223,7 @@ pub extern "C" fn ff_moq_write(
                 moq_ctx.unread.drain(0..(read_bytes as usize));
 
                 // Return after handling only one atom for some reason???
-                //return size;
+                return size;
             }
             Err(err) => {
                 // Failed to parse init tracks
