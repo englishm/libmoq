@@ -64,13 +64,6 @@ pub extern "C" fn ff_moq_open(
 ) -> c_int {
     println!("moq_open");
     let url_context = unsafe { *url_ctx_ptr };
-    dbg!(&url_context);
-    let av_class = unsafe { *url_context.av_class };
-    dbg!(&av_class);
-    let class_name = unsafe { std::ffi::CStr::from_ptr(av_class.class_name) };
-    dbg!(&class_name);
-    let moq_context_size = size_of::<MoqContext>();
-    dbg!(&moq_context_size);
 
     unsafe {
         std::ptr::write(
@@ -79,7 +72,6 @@ pub extern "C" fn ff_moq_open(
         );
     }
 
-    // url_context.av_class = Some(&moq_context);
     0
 }
 
