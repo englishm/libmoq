@@ -50,7 +50,7 @@ impl FFMoqContext {
         let tracks = HashMap::new();
 
         let rt = tokio::runtime::Builder::new_multi_thread()
-            .worker_threads(4)
+            .worker_threads(9)
             .enable_all()
             .build()?;
         // let rt = tokio::runtime::Builder::new_current_thread()
