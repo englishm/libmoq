@@ -3,12 +3,9 @@ use crate::media::*;
 use crate::moq::*;
 
 use std::{
-    collections::HashMap,
     mem::size_of,
-    os::raw::{c_char, c_int, c_uchar, c_void},
+    os::raw::{c_char, c_int, c_uchar},
     ptr::null,
-    str::FromStr,
-    sync::{Arc, Mutex},
 };
 
 #[allow(non_upper_case_globals)]

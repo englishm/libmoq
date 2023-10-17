@@ -1,11 +1,9 @@
 use anyhow::Context;
 use std::{
     collections::HashMap,
-    mem::size_of,
-    os::raw::{c_char, c_int, c_uchar, c_void},
-    ptr::null,
+    os::raw::c_int,
     str::FromStr,
-    sync::{Arc, Mutex},
+    sync::Arc,
 };
 use moq_transport::model::broadcast;
 use moq_transport::model::track;
